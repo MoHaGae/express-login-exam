@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>로그인 예제</title>
+	</head>
+	<body>
+		<h1>별명변경</h1>
+		<form action="/nickname/edit" method="post">
+			<label>별명</label><input type="text" name="nickname" value="<%=user.nickname%>" /><br />
+			<button type="submit">별명변경</button>
+		</form>
+	</body>
+</html>

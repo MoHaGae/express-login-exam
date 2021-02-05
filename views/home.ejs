@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>로그인 예제</title>
+	</head>
+	<body>
+		<headder>
+			<h1>홈</h1>
+		</headder>
+		<nav>
+			<% if(locals.user){ %>
+			    <a href="/nickname/edit">별명변경</a>
+			    <a href="/logout">로그아웃</a>
+			<% } else { %>
+			    <a href="/login">로그인</a>
+			    <a href="/join">회원가입</a>
+			<% } %>
+        </nav>
+        <main>
+            <% if(locals.user) { %>
+                <%=user.nickname%>님 환영합니다~~ 뿌뿌🎈🎈
+            <% } %>   
+        </main>
+	</body>
+</html>
