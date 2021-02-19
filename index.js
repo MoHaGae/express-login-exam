@@ -1,7 +1,6 @@
 const express = require("express");
 const session = require("express-session");
 const bodyParser = require("body-parser");
-const ejs = require("ejs");
 
 const app = express();
 const PORT = 8080;
@@ -100,17 +99,29 @@ app.get("/nickname/edit", (req, res) => {
 app.post("/nickname/edit", (req, res) => {
 	const { nickname } = req.body;
 	const { user } = req.session;
+
+	// 인증
+	if (!user) {
+		return res.render("login", { flashMessage: "로그인 후 이용해주세요." });
+	}
+	// 유효성검증
 	if (!nickname || nickname.trim().length <= 0) {
 		return res.render("nicknameEdit", {
 			user,
 			flashMessage: "별명을 정확히 입력해주세요.",
 		});
 	}
+
+	// TODO 별명을 수정하는 코드 ~
+	users[user.id].nickname = nickname;
+	req.session.user = users[user.id];
 	res.redirect("/");
 });
 
 app.get("/", (req, res) => {
 	const { user } = req.session;
+	console.log(users);
+	console.log(req.session);
 	res.render("home", { user });
 });
 
