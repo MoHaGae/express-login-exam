@@ -1,11 +1,16 @@
 const express = require("express");
 const session = require("express-session");
 const bodyParser = require("body-parser");
+const mysql = require("mysql");
+const dbconfig = require("./config/databaseConfig.js");
+
+const connection = mysql.createConnection(dbconfig);
+connection.connect(() => {
+	console.log("✅ DB Connected");
+});
 
 const app = express();
 const PORT = 8080;
-
-const users = {};
 
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -18,10 +23,12 @@ app.use(
 	})
 );
 
+// 회원가입 패이지 요청처리
 app.get("/join", (req, res) => {
 	res.render("join");
 });
 
+// 회원가입 요청처리
 app.post("/join", (req, res) => {
 	const { id, password, nickname } = req.body;
 
@@ -39,25 +46,33 @@ app.post("/join", (req, res) => {
 		});
 	}
 
-	// 중복체크
-	if (users[id]) {
-		return res.render("join", {
-			flashMessage: "이미 가입되어있는 아이디입니다.",
-		});
-	}
-
-	users[id] = {
-		id,
-		password,
-		nickname,
-	};
-	return res.redirect("/login");
+	//💾 유저정보를 데이터베이스에 저장
+	connection.query(
+		"INSERT INTO user(id, password, nickname) VALUES(?, ?, ?)",
+		[id, password, nickname],
+		(err) => {
+			if (err) {
+				console.error(err);
+				if (err.code === "ER_DUP_ENTRY") {
+					return res.render("join", {
+						flashMessage: "이미 가입된 아이디가 있습니다.",
+					});
+				}
+				return res.render("join", {
+					flashMessage: "회원가입에 실패했습니다.",
+				});
+			}
+			return res.redirect("/login");
+		}
+	);
 });
 
+// 로그인 페이지 요청처리
 app.get("/login", (_, res) => {
 	res.render("login");
 });
 
+// 로그인 요청처리
 app.post("/login", (req, res) => {
 	const { id, password } = req.body;
 
@@ -73,21 +88,36 @@ app.post("/login", (req, res) => {
 		});
 	}
 
-	// 회원검증
-	if (!users[id] || users[id].password !== password) {
-		return res.render("login", {
-			flashMessage: "로그인에 실패하였습니다.",
-		});
-	}
-	req.session.user = users[id];
-	res.redirect("/");
+	connection.query(
+		"SELECT id, password, nickname FROM user WHERE id = ?",
+		[id],
+		(err, rows) => {
+			const user = rows[0];
+			if (err) {
+				console.error(err);
+				return res.render("login", {
+					flashMessage:
+						"현재 서비스를 이용할 수 없습니다. 잠시후 시도해주세요.",
+				});
+			}
+			if (user.password !== password) {
+				return res.render("login", {
+					flashMessage: "로그인에 실패했습니다.",
+				});
+			}
+			req.session.user = user;
+			res.redirect("/");
+		}
+	);
 });
 
+// 로그아웃 요청처리
 app.get("/logout", (req, res) => {
 	delete req.session.user;
 	res.redirect("/");
 });
 
+// 별명수정 페이지 요청처리
 app.get("/nickname/edit", (req, res) => {
 	const { user } = req.session;
 	if (!user) {
@@ -96,11 +126,12 @@ app.get("/nickname/edit", (req, res) => {
 	res.render("nicknameEdit", { user });
 });
 
+// 별명변경 요청처리
 app.post("/nickname/edit", (req, res) => {
 	const { nickname } = req.body;
 	const { user } = req.session;
 
-	// 인증
+	// 세션에 인증된 유저인지 검증
 	if (!user) {
 		return res.render("login", { flashMessage: "로그인 후 이용해주세요." });
 	}
@@ -112,16 +143,29 @@ app.post("/nickname/edit", (req, res) => {
 		});
 	}
 
-	// TODO 별명을 수정하는 코드 ~
-	users[user.id].nickname = nickname;
-	req.session.user = users[user.id];
-	res.redirect("/");
+	// TODO 별명을 수정하는 코드
+	connection.query(
+		"UPDATE user SET nickname=? WHERE id=?",
+		[nickname, user.id],
+		(err, rows, fields) => {
+			console.log(err, rows, fields);
+			if (err) {
+				return res.render("nicknameEdit", {
+					user,
+					flashMessage:
+						"현재 서비스를 이용할 수 없습니다. 잠시후 시도해주세요.",
+				});
+			}
+			user.nickname = nickname;
+			req.session.user = user;
+			res.redirect("/");
+		}
+	);
 });
 
+// 홈화면 요청처리
 app.get("/", (req, res) => {
 	const { user } = req.session;
-	console.log(users);
-	console.log(req.session);
 	res.render("home", { user });
 });
 
